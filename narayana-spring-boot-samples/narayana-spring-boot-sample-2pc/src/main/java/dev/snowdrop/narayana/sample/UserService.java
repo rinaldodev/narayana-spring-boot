@@ -16,34 +16,36 @@
 
 package dev.snowdrop.narayana.sample;
 
-import java.util.List;
-
 import jakarta.transaction.Transactional;
-
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class UserService {
 
-    private final JdbcTemplate jdbcTemplate;
 
-    private final JmsTemplate jmsTemplate;
+    private final JdbcTemplate jdbcTemplate1;
 
-    public UserService(JdbcTemplate jdbcTemplate, JmsTemplate jmsTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.jmsTemplate = jmsTemplate;
+    private final JdbcTemplate jdbcTemplate2;
+
+    public UserService(
+            @Qualifier("ds1jdbc") JdbcTemplate jdbcTemplate1,
+            @Qualifier("ds2jdbc") JdbcTemplate jdbcTemplate2
+    ) {
+        this.jdbcTemplate1 = jdbcTemplate1;
+        this.jdbcTemplate2 = jdbcTemplate2;
     }
 
     @Transactional
     public void create(String name) {
-        // Send a message before the update to demonstrate rollback when update fails.
-        this.jmsTemplate.convertAndSend(JmsLogger.LOGGER_QUEUE, "Created a new user " + name);
-        this.jdbcTemplate.update("insert into USERS(name) values(?)", name);
+        this.jdbcTemplate1.update("insert into USERS(name) values(?)", name);
+        this.jdbcTemplate2.update("insert into USERS(name) values(?)", name);
     }
 
     public List<String> getAll() {
-        return this.jdbcTemplate.queryForList("select NAME from USERS", String.class);
+        return this.jdbcTemplate2.queryForList("select NAME from USERS", String.class);
     }
 }

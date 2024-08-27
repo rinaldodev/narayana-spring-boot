@@ -61,11 +61,18 @@ public class ScheduledExecutor {
      */
     @Scheduled(fixedRate = 10000)
     public void listUsers() {
-        List<String> names = this.userService.getAll();
-        if (names.isEmpty()) {
-            System.out.println("Executor ---> Users database is still empty");
+        List<String> names1 = this.userService.getAll();
+        if (names1.isEmpty()) {
+            System.out.println("Executor ---> Users database 1 is still empty");
         } else {
-            System.out.println("Executor ---> Current users: " + String.join(", ", names));
+            System.out.println("Executor ---> Current users in db1: " + String.join(", ", names1));
+        }
+
+        List<String> names2 = this.userService.getAll();
+        if (names2.isEmpty()) {
+            System.out.println("Executor ---> Users database 2 is still empty");
+        } else {
+            System.out.println("Executor ---> Current users in db2: " + String.join(", ", names2));
         }
     }
 }

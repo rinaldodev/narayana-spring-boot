@@ -16,18 +16,18 @@
 
 package dev.snowdrop.narayana.sample;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import javax.sql.DataSource;
-import javax.sql.XADataSource;
-
 import com.arjuna.ats.internal.jta.recovery.arjunacore.XARecoveryModule;
 import dev.snowdrop.boot.narayana.core.jdbc.GenericXADataSourceWrapper;
 import org.postgresql.xa.PGXADataSource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 @Configuration
 public class DataSourceConfiguration {
@@ -36,7 +36,13 @@ public class DataSourceConfiguration {
     public DataSource firstDataSource(XARecoveryModule xaRecoveryModule) throws Exception {
         PGXADataSource dataSource = new PGXADataSource();
         dataSource.setURL("jdbc:postgresql://localhost:5432/postgres");
-        createDummyTable(dataSource);
+        dataSource.setUser("postgres");
+        dataSource.setPassword("password");
+        createTable(dataSource,
+                """
+                        drop table if exists USERS;
+                        create table USERS(NAME varchar(20) NOT NULL);
+                        """);
 
         GenericXADataSourceWrapper wrapper = new GenericXADataSourceWrapper(xaRecoveryModule);
         return wrapper.wrapDataSource(dataSource);
@@ -46,18 +52,32 @@ public class DataSourceConfiguration {
     public DataSource secondDataSource(XARecoveryModule xaRecoveryModule) throws Exception {
         PGXADataSource dataSource = new PGXADataSource();
         dataSource.setURL("jdbc:postgresql://localhost:5433/postgres");
-        createDummyTable(dataSource);
+        dataSource.setUser("postgres");
+        dataSource.setPassword("password");
+        createTable(dataSource,
+                """
+                        drop table if exists USERS;
+                        create table USERS(NAME varchar(20) NOT NULL UNIQUE DEFERRABLE INITIALLY DEFERRED);
+                        """);
 
         GenericXADataSourceWrapper wrapper = new GenericXADataSourceWrapper(xaRecoveryModule);
         return wrapper.wrapDataSource(dataSource);
     }
 
-    private void createDummyTable(XADataSource dataSource) throws SQLException {
-        try (
-                Connection conn = dataSource.getXAConnection().getConnection();
-                Statement stmt = conn.createStatement()
-        ) {
-            stmt.execute("create table dummy (val int)");
+    @Bean("ds1jdbc")
+    public JdbcTemplate firstDataSourceJDBC(@Qualifier("ds1") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+
+    @Bean("ds2jdbc")
+    public JdbcTemplate secondDataSourceJDBC(@Qualifier("ds2") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+
+    private void createTable(PGXADataSource dataSource, String stmtStr) throws SQLException {
+        Connection conn = dataSource.getConnection();
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(stmtStr);
         }
     }
 }
